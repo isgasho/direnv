@@ -794,17 +794,34 @@ use_guix() {
   eval "$(guix environment "$@" --search-paths)"
 }
 
-## Load direnv libraries
-for lib in "$direnv_config_dir/lib/"*.sh; do
-  # shellcheck disable=SC1090
-  source "$lib"
-done
+# Usage: __main__ <cmd> [...<args>]
+#
+# Used by rc.go
+__main__() {
+  __dump_at_exit() {
+    local ret=$?
+    # always dump on fd 3
+    "$direnv" dump json 3
+    trap - EXIT
+    exit "$ret"
+  }
+  trap __dump_at_exit EXIT
 
-## Load the global ~/.direnvrc if present
-if [[ -f $direnv_config_dir/direnvrc ]]; then
-  # shellcheck disable=SC1090
-  source "$direnv_config_dir/direnvrc" >&2
-elif [[ -f $HOME/.direnvrc ]]; then
-  # shellcheck disable=SC1090
-  source "$HOME/.direnvrc" >&2
-fi
+  # load direnv libraries
+  for lib in "$direnv_config_dir/lib/"*.sh; do
+    # shellcheck disable=SC1090
+    source "$lib"
+  done
+
+  # load the global ~/.direnvrc if present
+  if [[ -f $direnv_config_dir/direnvrc ]]; then
+    # shellcheck disable=SC1090
+    source "$direnv_config_dir/direnvrc" >&2
+  elif [[ -f $HOME/.direnvrc ]]; then
+    # shellcheck disable=SC1090
+    source "$HOME/.direnvrc" >&2
+  fi
+
+  # and finally load the .envrc
+  "$@"
+}
